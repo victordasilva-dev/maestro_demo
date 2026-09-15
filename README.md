@@ -25,14 +25,14 @@ app/
 ## Pipeline principal (`maestro-e2e.yml`)
 
 ```
-lint  ──▶  e2e (matriz de API levels)  ──▶  release (solo en main)
+lint  ──▶  e2e (matriz de API levels)  ──▶  release (DESACTIVADO)
 ```
 
 | Job | Que hace | Duracion aprox. |
 |---|---|---|
 | `lint` | `maestro check-syntax` sobre `.maestro/`. No necesita emulador. | ~30 s |
 | `e2e` | Levanta un emulador, instala el APK, corre la suite y sube la evidencia. | 15–25 min |
-| `release` | Publica el APK como GitHub Release si la suite paso en `main`. | ~1 min |
+| `release` | **Comentado.** Publicaba el APK como GitHub Release tras pasar la suite en `main`. Descomentar el bloque al final de `maestro-e2e.yml` para activarlo. | ~1 min |
 
 ### Disparadores
 
@@ -98,5 +98,7 @@ maestro test .maestro/carro-agregar-producto-fallido.yaml
   reproducible y evita que una release de Maestro rompa la suite sin aviso.
 - **`maestro-cloud.yml` requiere el secret `MAESTRO_CLOUD_API_KEY`** y no hace
   nada hasta configurarlo.
+- **El job `release` esta comentado**, asi que los pushes a `main` no generan
+  releases todavia. Activarlo cuando el pipeline este estable.
 - **No hay job de compilacion.** `codigo_ejemplo.kt` no se compila ni se valida;
   hoy solo sirve como archivo a modificar para disparar el pipeline.

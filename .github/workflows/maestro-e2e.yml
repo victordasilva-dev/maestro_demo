@@ -1,8 +1,9 @@
 name: Maestro E2E (Android)
 
 # ---------------------------------------------------------------------------
-# Pipeline de ejemplo: valida la sintaxis de los flows, los ejecuta contra un
-# emulador Android efimero y, si todo pasa en main, publica el APK como release.
+# Pipeline de ejemplo: valida la sintaxis de los flows y los ejecuta contra un
+# emulador Android efimero.
+# El job de publicacion (CD) esta comentado al final del archivo.
 # ---------------------------------------------------------------------------
 
 on:
@@ -204,24 +205,28 @@ jobs:
           fail_on_failure: true
 
   # -------------------------------------------------------------------------
-  # 3. CD: solo si la suite paso y estamos en main.
+  # 3. CD: DESACTIVADO.
+  # Publicaba el APK como GitHub Release en cada push a main. Comentado para
+  # que los primeros pushes no generen releases.
+  # Para reactivarlo: descomentar el bloque de abajo (quitar el "# " inicial
+  # de cada linea). Requiere permisos contents: write, ya declarados ahi.
   # -------------------------------------------------------------------------
-  release:
-    name: Publicar APK
-    needs: e2e
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Crear release con el APK verificado
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: build-${{ github.run_number }}
-          name: Build ${{ github.run_number }}
-          body: |
-            APK validado por la suite E2E de Maestro.
-            Commit: ${{ github.sha }}
-          files: ${{ env.APK_PATH }}
+  # release:
+  #   name: Publicar APK
+  #   needs: e2e
+  #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: write
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #
+  #     - name: Crear release con el APK verificado
+  #       uses: softprops/action-gh-release@v2
+  #       with:
+  #         tag_name: build-${{ github.run_number }}
+  #         name: Build ${{ github.run_number }}
+  #         body: |
+  #           APK validado por la suite E2E de Maestro.
+  #           Commit: ${{ github.sha }}
+  #         files: ${{ env.APK_PATH }}

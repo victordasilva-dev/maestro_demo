@@ -88,6 +88,11 @@ jobs:
     needs: lint
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    # action-junit-report publica un check run; sin checks: write falla con
+    # "Resource not accessible by integration".
+    permissions:
+      contents: read
+      checks: write
     strategy:
       fail-fast: false
       matrix:
@@ -168,31 +173,9 @@ jobs:
           # Maestro necesita las animaciones apagadas para que los waits sean
           # deterministas en el WebView.
           disable-animations: true
-          script: |
-            set -o pipefail
-            adb wait-for-device
-            adb shell settings put global window_animation_scale 0
-            adb shell settings put global transition_animation_scale 0
-            adb shell settings put global animator_duration_scale 0
-
-            echo "::group::Instalar APK"
-            adb install -r -g "$APK_PATH"
-            echo "::endgroup::"
-
-            mkdir -p artifacts/screenshots artifacts/debug
-
-            ARGS=""
-            if [ -n "$MAESTRO_TAGS" ]; then
-              ARGS="--include-tags=$MAESTRO_TAGS"
-            fi
-
-            # --format junit deja un reporte que el job de publicacion consume.
-            # --debug-output recoge logs, jerarquia de vistas y capturas de fallo.
-            maestro test .maestro/ \
-              $ARGS \
-              --format junit \
-              --output artifacts/report.xml \
-              --debug-output artifacts/debug
+          # Se invoca con bash: el action usa /bin/sh (dash), que no soporta
+          # `set -o pipefail`.
+          script: bash .github/scripts/e2e.sh
 
       # Las capturas de takeScreenshot caen en el working directory.
       - name: Recolectar capturas

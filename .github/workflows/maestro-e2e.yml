@@ -61,8 +61,23 @@ jobs:
           curl -fsSL "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
 
+      # check-syntax valida UN flow por invocacion: no acepta directorios ni
+      # varios archivos. config.yaml se excluye porque es la config del
+      # workspace, no un flow, y el comando lo rechaza.
       - name: maestro check-syntax
-        run: maestro check-syntax .maestro/
+        run: |
+          set -u
+          status=0
+          while IFS= read -r f; do
+            if maestro check-syntax "$f" >/dev/null 2>&1; then
+              echo "  ok  $f"
+            else
+              echo "::error file=$f::Sintaxis invalida en $f"
+              maestro check-syntax "$f" 2>&1 | head -20 || true
+              status=1
+            fi
+          done < <(find .maestro -type f \( -name '*.yaml' -o -name '*.yml' \) ! -name 'config.yaml' | sort)
+          exit $status
 
   # -------------------------------------------------------------------------
   # 2. Suite E2E contra emulador. La matriz demuestra cobertura multi-API;

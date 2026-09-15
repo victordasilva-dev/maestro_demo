@@ -58,8 +58,29 @@ con `tags = fallido`. Eso se traduce en `maestro test --include-tags=fallido`.
 Cada corrida sube el artefacto `maestro-evidencia-api-<N>` con:
 
 - `report.xml` — reporte JUnit, tambien renderizado en el resumen del run
-- `screenshots/` — los `takeScreenshot` de los flows (`TC-CARRO-AND-004`, `005`, `010`)
-- `debug/` — logs, jerarquia de vistas y capturas automaticas de los pasos fallidos
+- `run/takeScreenshot/` — las 14 capturas de los flows, nombradas por caso de prueba
+- `run/logs/` — logs de la corrida
+- `run/manifest.json` y `run/commands.json` — que se ejecuto y con que resultado
+
+Maestro soporta cuatro formatos de reporte (`JUNIT`, `HTML`, `HTML-DETAILED`,
+`NOOP`) pero acepta uno solo por corrida. El pipeline usa `JUNIT` porque es el
+que alimenta el check de GitHub y hace fallar el PR; `HTML-DETAILED` da un
+reporte visual mas comodo de leer, a cambio de perder ese check.
+
+La evidencia se concentra via `--test-output-dir`, que escribe todo en una ruta
+fija sin subcarpetas con timestamp.
+
+### Capturas
+
+Los flows toman captura en cada punto verificable del caso de prueba: estado
+inicial, PDP abierto, modal de talla, producto agregado, carro con el detalle,
+cantidad incrementada y disminuida, carro persistido tras reiniciar y checkout
+disponible. El flujo negativo cubre su propio estado inicial, el PDP, el boton
+deshabilitado, el modal que persiste y el carro vacio.
+
+Los nombres del flujo negativo llevan `-neg` en los pasos que comparte con el
+flujo exitoso (`001`, `003`): como todas las capturas caen en el mismo
+directorio, dos flows con el mismo nombre se sobrescribirian.
 
 ## Decisiones que importan para esta suite
 
@@ -93,9 +114,6 @@ maestro test .maestro/carro-agregar-producto-fallido.yaml
   pero engorda el historial de git de forma permanente. Lo habitual es que un
   job de build lo genere y el job `e2e` lo tome con `actions/download-artifact`,
   o guardarlo con Git LFS.
-- **Fijar la version de Maestro.** El workflow instala la ultima por defecto;
-  poner un valor en `env.MAESTRO_VERSION` (ej. `1.39.0`) hace el pipeline
-  reproducible y evita que una release de Maestro rompa la suite sin aviso.
 - **`maestro-cloud.yml` requiere el secret `MAESTRO_CLOUD_API_KEY`** y no hace
   nada hasta configurarlo.
 - **El job `release` esta comentado**, asi que los pushes a `main` no generan

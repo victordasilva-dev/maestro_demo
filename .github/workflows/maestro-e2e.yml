@@ -42,9 +42,9 @@ concurrency:
 env:
   APK_PATH: app/build/app-android-dev_2.5.apk
   APP_ID: com.tricot_app
-  # Vacio = instala la ultima version. Fijar una version (ej. "1.39.0") para
-  # que el pipeline sea reproducible.
-  MAESTRO_VERSION: ""
+  # Fijada para que CI corra exactamente la misma version que se usa en local
+  # y una release de Maestro no rompa la suite sin aviso.
+  MAESTRO_VERSION: "2.10.0"
 
 jobs:
   # -------------------------------------------------------------------------
@@ -177,13 +177,11 @@ jobs:
           # `set -o pipefail`.
           script: bash .github/scripts/e2e.sh
 
-      # Las capturas de takeScreenshot caen en el working directory.
-      - name: Recolectar capturas
+      # Maestro ya deja todo bajo artifacts/run gracias a --test-output-dir;
+      # esto solo lista lo recolectado para poder leerlo desde el log.
+      - name: Listar la evidencia recolectada
         if: always()
-        run: |
-          mkdir -p artifacts/screenshots
-          find . -maxdepth 1 -name "TC-*.png" -exec mv {} artifacts/screenshots/ \; || true
-          ls -R artifacts || true
+        run: ls -R artifacts || echo "sin evidencia"
 
       - name: Subir evidencia
         if: always()

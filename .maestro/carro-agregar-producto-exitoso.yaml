@@ -25,6 +25,10 @@ env:
     timeout: 30000
     label: "El contador del carrito muestra 'Carrito 0 artículos'"
 
+- takeScreenshot:
+    path: "TC-CARRO-AND-001-estado-inicial"
+    label: "Evidencia: estado inicial con el carrito vacio"
+
 # ---------------------------------------------------------------------
 # When busca "polera" y abre el PDP del producto
 # ---------------------------------------------------------------------
@@ -40,6 +44,10 @@ env:
 - assertVisible:
     text: "${PRECIO}"
     label: "El PDP muestra el precio $3.990"
+
+- takeScreenshot:
+    path: "TC-CARRO-AND-003-pdp-abierto"
+    label: "Evidencia: PDP con SKU y precio visibles"
 
 # ---------------------------------------------------------------------
 # When agrega el producto eligiendo la talla S
@@ -63,6 +71,10 @@ env:
     childOf:
       id: "js-pdp-size-selection"
     label: "El boton Agregar del modal queda habilitado"
+
+- takeScreenshot:
+    path: "TC-CARRO-AND-005-modal-talla-seleccionada"
+    label: "Evidencia: talla S seleccionada y Agregar habilitado"
 - tapOn:
     text: "Agregar"
     childOf:
@@ -135,6 +147,10 @@ env:
     text: '\(1 artículo\)'
     label: "El resumen del carro indica (1 artículo)"
 
+- takeScreenshot:
+    path: "TC-CARRO-AND-006-carro-con-producto"
+    label: "Evidencia: el carro muestra el producto, SKU, talla y total"
+
 # ---------------------------------------------------------------------
 # When incrementa y luego disminuye la cantidad
 # Los botones -/+ del carro son <button> sin id, sin texto y sin content-desc,
@@ -178,6 +194,10 @@ env:
     text: '\(2 artículos\)'
     label: "La cantidad del producto pasa a 2"
 
+- takeScreenshot:
+    path: "TC-CARRO-AND-007-cantidad-incrementada"
+    label: "Evidencia: cantidad en 2 y total actualizado a $7.980"
+
 - tapOn:
     point: "41%,46%"
     label: "Disminuir la cantidad del producto (-)"
@@ -199,6 +219,10 @@ env:
 - assertVisible:
     text: '\(1 artículo\)'
     label: "La cantidad del producto vuelve a 1"
+
+- takeScreenshot:
+    path: "TC-CARRO-AND-008-cantidad-disminuida"
+    label: "Evidencia: cantidad de vuelta en 1 y total en $3.990"
 
 # ---------------------------------------------------------------------
 # When cierra completamente la app y vuelve a abrirla sin limpiar el estado
@@ -232,6 +256,10 @@ env:
 - assertVisible:
     text: "Total a pagar ${PRECIO}"
     label: "El carro conserva el mismo total"
+
+- takeScreenshot:
+    path: "TC-CARRO-AND-009-carro-persistido"
+    label: "Evidencia: el carro sobrevive al reinicio de la app"
 
 # ---------------------------------------------------------------------
 # Then el boton "Iniciar compra" esta visible y habilitado

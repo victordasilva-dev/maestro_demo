@@ -23,6 +23,10 @@ env:
     timeout: 30000
     label: "El contador del carrito muestra 'Carrito 0 artículos'"
 
+- takeScreenshot:
+    path: "TC-CARRO-AND-001-neg-estado-inicial"
+    label: "Evidencia: estado inicial con el carrito vacio"
+
 # ---------------------------------------------------------------------
 # When busca "polera" y abre el PDP del producto
 # ---------------------------------------------------------------------
@@ -35,6 +39,10 @@ env:
 - assertVisible:
     text: "${PRECIO}"
     label: "El PDP muestra el precio $3.990"
+
+- takeScreenshot:
+    path: "TC-CARRO-AND-003-neg-pdp-abierto"
+    label: "Evidencia: PDP con SKU y precio visibles"
 
 # ---------------------------------------------------------------------
 # When toca "Agregar" sin haber seleccionado ninguna talla
@@ -82,6 +90,10 @@ env:
 - assertNotVisible:
     text: "Carrito 1 artículos"
     label: "El contador del carrito no se incrementa"
+
+- takeScreenshot:
+    path: "TC-CARRO-AND-004-modal-persiste"
+    label: "Evidencia: el modal sigue abierto y el carrito no cambia"
 
 # El producto no queda registrado en el carro de compras
 - tapOn:

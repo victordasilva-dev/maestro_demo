@@ -24,7 +24,7 @@ echo "::group::Instalar APK"
 adb install -r -g "$APK_PATH"
 echo "::endgroup::"
 
-mkdir -p artifacts/screenshots artifacts/debug
+mkdir -p artifacts
 
 # Argumentos opcionales como parametros posicionales: evita el word splitting
 # de una variable sin comillas.
@@ -34,7 +34,11 @@ if [ -n "$MAESTRO_TAGS" ]; then
   echo "Filtrando por tags: $MAESTRO_TAGS"
 fi
 
+# --test-output-dir concentra la evidencia de la corrida (manifest.json,
+# commands.json, logs/ y takeScreenshot/) en una ruta fija, sin subcarpetas
+# con timestamp. Reemplaza el rastreo manual de los .png por el cwd.
 maestro test .maestro/ "$@" \
-  --format junit \
+  --format JUNIT \
   --output artifacts/report.xml \
-  --debug-output artifacts/debug
+  --test-suite-name "Carro - Agregar producto al carro" \
+  --test-output-dir artifacts/run

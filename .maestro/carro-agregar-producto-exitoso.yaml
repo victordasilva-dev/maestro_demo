@@ -1,0 +1,246 @@
+appId: com.tricot_app
+name: "Carro - Flujo exitoso - buscar, agregar al carro y llegar al checkout disponible"
+tags:
+  - e2e
+  - exitoso
+  - carro
+# Trazabilidad: TC-CARRO-AND-001, 002, 003, 005, 006, 007, 008, 009, 010
+env:
+  TERMINO: "polera"
+  PRODUCTO: "Polera deportiva mujer gris verde"
+  SKU_PDP: "274125"
+  SKU_CARRO: "SKU: 274125499"
+  TALLA: "S"
+  PRECIO: '\$3\.990'
+  PRECIO_X2: '\$7\.980'
+---
+# ---------------------------------------------------------------------
+# Given la app esta instalada con estado limpio y el usuario es invitado
+# ---------------------------------------------------------------------
+- launchApp:
+    clearState: true
+    label: "Abrir la app por primera vez con estado limpio"
+- extendedWaitUntil:
+    visible: "Carrito 0 artículos"
+    timeout: 30000
+    label: "El contador del carrito muestra 'Carrito 0 artículos'"
+
+# ---------------------------------------------------------------------
+# When busca "polera" y abre el PDP del producto
+# ---------------------------------------------------------------------
+- runFlow:
+    file: subflows/buscar-y-abrir-pdp.yaml
+
+# Then el PDP muestra SKU y precio
+# Ojo: en el PDP el SKU se renderiza en dos nodos ("SKU: " + numero) y corresponde
+# al SKU master (274125). El SKU de variante (274125499) solo aparece en el carro.
+- assertVisible:
+    text: "${SKU_PDP}"
+    label: "El PDP muestra el SKU master ${SKU_PDP}"
+- assertVisible:
+    text: "${PRECIO}"
+    label: "El PDP muestra el precio $3.990"
+
+# ---------------------------------------------------------------------
+# When agrega el producto eligiendo la talla S
+# ---------------------------------------------------------------------
+- tapOn:
+    text: "Agregar"
+    enabled: true
+    label: "Tocar el boton Agregar del PDP"
+- extendedWaitUntil:
+    visible: "Selecciona una talla"
+    timeout: 10000
+    label: "Se abre el modal 'Selecciona una talla'"
+- tapOn:
+    text: "${TALLA}"
+    childOf:
+      id: "js-pdp-size-selection"
+    label: "Seleccionar la talla ${TALLA} dentro del modal"
+- assertVisible:
+    text: "Agregar"
+    enabled: true
+    childOf:
+      id: "js-pdp-size-selection"
+    label: "El boton Agregar del modal queda habilitado"
+- tapOn:
+    text: "Agregar"
+    childOf:
+      id: "js-pdp-size-selection"
+    label: "Tocar el boton Agregar habilitado del modal"
+
+# Al cerrar el modal, el WebView deja de exponer su arbol de accesibilidad: el
+# badge del carrito se ve en pantalla pero ningun nodo queda consultable (solo
+# sobreviven nodos viejos del modal). Volver al home con el nav NATIVO fuerza el
+# re-render y devuelve el contador al arbol. Verificado el 2026-09-15.
+- tapOn:
+    text: "Inicio"
+    label: "Volver al home con el nav nativo (fuerza el re-render del WebView)"
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible: "Carrito 1 artículos"
+    timeout: 25000
+    optional: true
+    label: "El contador del carrito muestra 'Carrito 1 artículos'"
+
+# Red de seguridad para CI: si el WebView siguiera congelado, reiniciar la app
+# sin limpiar estado reconstruye la vista.
+- runFlow:
+    when:
+      notVisible: "Carrito 1 artículos"
+    commands:
+      - stopApp
+      - launchApp:
+          clearState: false
+      - extendedWaitUntil:
+          visible: "Carrito 1 artículos"
+          timeout: 30000
+- assertVisible:
+    text: "Carrito 1 artículos"
+    label: "El contador del carrito muestra 'Carrito 1 artículos'"
+
+- takeScreenshot:
+    path: "TC-CARRO-AND-005-producto-agregado"
+    label: "Evidencia: producto agregado al carro"
+
+# ---------------------------------------------------------------------
+# When abre el carro de compras
+# ---------------------------------------------------------------------
+- tapOn:
+    text: "Carrito 1 artículos"
+    label: "Abrir el carro de compras"
+- extendedWaitUntil:
+    visible: "Carrito de compras"
+    timeout: 20000
+
+- assertVisible:
+    text: "${PRODUCTO}"
+    label: "El carro muestra el producto"
+- assertVisible:
+    text: "${SKU_CARRO}"
+    label: "El carro muestra ${SKU_CARRO}"
+- assertVisible:
+    text: "Talla: ${TALLA}"
+    label: "El carro muestra Talla: ${TALLA}"
+- assertVisible:
+    text: "1"
+    below:
+      text: "Talla: ${TALLA}"
+    label: "El carro muestra cantidad 1"
+- assertVisible:
+    text: "Total a pagar ${PRECIO}"
+    label: "El carro muestra Total a pagar $3.990"
+- assertVisible:
+    text: '\(1 artículo\)'
+    label: "El resumen del carro indica (1 artículo)"
+
+# ---------------------------------------------------------------------
+# When incrementa y luego disminuye la cantidad
+# Los botones -/+ del carro son <button> sin id, sin texto y sin content-desc,
+# por eso se tocan por coordenada. El scrollUntilVisible previo deja la tarjeta
+# del producto en una posicion fija para que la coordenada sea determinista.
+# ---------------------------------------------------------------------
+# El banner promocional se re-renderiza en cada pagina del WebView y desplaza
+# ~200px el contenido. Se cierra aqui para que la coordenada del stepper sea fija.
+- tapOn:
+    text: "Close"
+    optional: true
+    label: "Cerrar el banner promocional de la pagina del carro"
+- waitForAnimationToEnd:
+    timeout: 4000
+- assertVisible:
+    text: "Seleccionar producto: ${PRODUCTO}"
+    label: "La tarjeta del producto esta visible en el carro"
+
+# El modulo "¡Faltan $X para obtener despacho gratis!" puede renderizarse en una o
+# dos lineas segun el monto, lo que desplaza el stepper ~48px. Se toca la posicion
+# habitual y, solo si el total no cambio, se reintenta en la posicion desplazada.
+- tapOn:
+    point: "57%,44%"
+    label: "Incrementar la cantidad del producto (+)"
+- extendedWaitUntil:
+    visible: "Total a pagar ${PRECIO_X2}"
+    timeout: 12000
+    optional: true
+- runFlow:
+    when:
+      notVisible: "Total a pagar ${PRECIO_X2}"
+    commands:
+      - tapOn:
+          point: "57%,46%"
+          label: "Reintentar el (+) con el bloque de despacho en dos lineas"
+- extendedWaitUntil:
+    visible: "Total a pagar ${PRECIO_X2}"
+    timeout: 20000
+    label: "El total a pagar se actualiza a $7.980"
+- assertVisible:
+    text: '\(2 artículos\)'
+    label: "La cantidad del producto pasa a 2"
+
+- tapOn:
+    point: "41%,46%"
+    label: "Disminuir la cantidad del producto (-)"
+- extendedWaitUntil:
+    visible: "Total a pagar ${PRECIO}"
+    timeout: 12000
+    optional: true
+- runFlow:
+    when:
+      notVisible: "Total a pagar ${PRECIO}"
+    commands:
+      - tapOn:
+          point: "41%,44%"
+          label: "Reintentar el (-) con el bloque de despacho en una linea"
+- extendedWaitUntil:
+    visible: "Total a pagar ${PRECIO}"
+    timeout: 20000
+    label: "El total a pagar vuelve a $3.990"
+- assertVisible:
+    text: '\(1 artículo\)'
+    label: "La cantidad del producto vuelve a 1"
+
+# ---------------------------------------------------------------------
+# When cierra completamente la app y vuelve a abrirla sin limpiar el estado
+# ---------------------------------------------------------------------
+- stopApp:
+    label: "Cerrar completamente la app"
+- launchApp:
+    clearState: false
+    label: "Volver a abrir la app sin limpiar el estado"
+- extendedWaitUntil:
+    visible: "Carrito 1 artículos"
+    timeout: 30000
+    label: "El contador del carrito conserva 'Carrito 1 artículos'"
+
+- tapOn:
+    text: "Carrito 1 artículos"
+    label: "Abrir nuevamente el carro"
+- extendedWaitUntil:
+    visible: "Carrito de compras"
+    timeout: 20000
+
+- assertVisible:
+    text: "${PRODUCTO}"
+    label: "El carro conserva el mismo producto"
+- assertVisible:
+    text: "${SKU_CARRO}"
+    label: "El carro conserva el mismo SKU"
+- assertVisible:
+    text: "Talla: ${TALLA}"
+    label: "El carro conserva la misma talla"
+- assertVisible:
+    text: "Total a pagar ${PRECIO}"
+    label: "El carro conserva el mismo total"
+
+# ---------------------------------------------------------------------
+# Then el boton "Iniciar compra" esta visible y habilitado
+# ---------------------------------------------------------------------
+- assertVisible:
+    text: "Iniciar compra"
+    enabled: true
+    label: "El boton 'Iniciar compra' esta visible y habilitado"
+
+- takeScreenshot:
+    path: "TC-CARRO-AND-010-checkout-disponible"
+    label: "Evidencia: carro persistido y checkout disponible"

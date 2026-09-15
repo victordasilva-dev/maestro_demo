@@ -1,0 +1,9 @@
+# Normaliza a LF en el repositorio. Los runners de GitHub son Linux; sin esto
+# los YAML y scripts commiteados desde Windows viajan con CRLF y ensucian los
+# diffs entre maquinas.
+* text=auto eol=lf
+
+# Binarios: nunca aplicar conversion de fin de linea.
+*.apk binary
+*.png binary
+*.jpg binary

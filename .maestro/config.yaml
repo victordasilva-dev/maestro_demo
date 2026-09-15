@@ -1,0 +1,4 @@
+# Workspace Maestro - suite "Agregar producto al carro"
+# Solo los flows de primer nivel son ejecutables; subflows/ contiene pasos reutilizables.
+flows:
+  - "*.yaml"

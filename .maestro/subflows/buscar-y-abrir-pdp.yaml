@@ -1,0 +1,39 @@
+appId: com.tricot_app
+name: "Buscar un producto en el header y abrir su PDP"
+# Parametros esperados (env):
+#   TERMINO  -> termino a escribir en el buscador
+#   PRODUCTO -> nombre exacto del producto sugerido a abrir
+---
+# El buscador del header vive dentro del WebView y no expone resource-id ni texto
+# cuando esta vacio, por eso se toca por coordenada y se valida que abra el overlay.
+- retry:
+    maxRetries: 2
+    commands:
+      - tapOn:
+          point: "50%,19%"
+          label: "Tocar el buscador del header"
+      - extendedWaitUntil:
+          visible: "Buscador"
+          timeout: 8000
+
+- inputText: ${TERMINO}
+
+- extendedWaitUntil:
+    visible: "Sugerencias"
+    timeout: 20000
+    label: "El bloque Sugerencias aparece en un maximo de 20 s"
+
+- assertVisible:
+    id: "product-0"
+    text: "${PRODUCTO}"
+    label: "El producto buscado aparece entre los resultados sugeridos"
+
+- hideKeyboard
+- tapOn:
+    id: "product-0"
+    label: "Seleccionar el producto sugerido"
+
+- extendedWaitUntil:
+    visible: "${PRODUCTO}"
+    timeout: 20000
+    label: "Se muestra la pagina de detalle del producto (PDP)"

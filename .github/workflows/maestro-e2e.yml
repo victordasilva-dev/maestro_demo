@@ -1,0 +1,227 @@
+name: Maestro E2E (Android)
+
+# ---------------------------------------------------------------------------
+# Pipeline de ejemplo: valida la sintaxis de los flows, los ejecuta contra un
+# emulador Android efimero y, si todo pasa en main, publica el APK como release.
+# ---------------------------------------------------------------------------
+
+on:
+  # Cualquier push, en cualquier rama, que toque el codigo de la app o los
+  # flows. Cambios a README/docs no gastan 20 min de emulador.
+  push:
+    branches: ["**"]
+    paths:
+      - "app/**"
+      - ".maestro/**"
+      - ".github/workflows/maestro-e2e.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "app/**"
+      - ".maestro/**"
+      - ".github/workflows/maestro-e2e.yml"
+  schedule:
+    # Regresion nocturna a las 03:00 UTC (00:00 en Chile continental).
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      tags:
+        description: "Tags de Maestro a ejecutar (vacio = todos)"
+        required: false
+        default: ""
+      api-level:
+        description: "API level del emulador"
+        required: false
+        default: "31"
+
+concurrency:
+  group: maestro-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  APK_PATH: app/build/app-android-dev_2.5.apk
+  APP_ID: com.tricot_app
+  # Vacio = instala la ultima version. Fijar una version (ej. "1.39.0") para
+  # que el pipeline sea reproducible.
+  MAESTRO_VERSION: ""
+
+jobs:
+  # -------------------------------------------------------------------------
+  # 1. Validacion rapida: corre en segundos y no necesita emulador.
+  # -------------------------------------------------------------------------
+  lint:
+    name: Validar sintaxis de los flows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar Maestro CLI
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: maestro check-syntax
+        run: maestro check-syntax .maestro/
+
+  # -------------------------------------------------------------------------
+  # 2. Suite E2E contra emulador. La matriz demuestra cobertura multi-API;
+  #    para un demo mas rapido, dejar un solo api-level.
+  # -------------------------------------------------------------------------
+  e2e:
+    name: E2E API ${{ matrix.api-level }}
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: [31]
+        # Para ampliar cobertura: api-level: [29, 31, 34]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verificar que el APK existe
+        run: |
+          if [ ! -f "$APK_PATH" ]; then
+            echo "::error::No se encontro el APK en $APK_PATH"
+            echo "Si el APK no vive en el repo, reemplazar este paso por un"
+            echo "actions/download-artifact del job de build."
+            exit 1
+          fi
+          ls -lh "$APK_PATH"
+
+      - name: Configurar JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # El emulador x86_64 necesita aceleracion por hardware. Los runners de
+      # GitHub traen KVM pero no dan permisos al usuario por defecto.
+      - name: Habilitar KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Instalar Maestro CLI
+        run: |
+          if [ -n "$MAESTRO_VERSION" ]; then export MAESTRO_VERSION; fi
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Version de Maestro
+        run: maestro --version
+
+      # Cachear el AVD ahorra ~4 min por corrida.
+      - name: Cache del AVD
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ matrix.api-level }}-pixel6
+
+      - name: Crear el AVD y cachear el snapshot
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "AVD creado y snapshot guardado"
+
+      - name: Ejecutar la suite Maestro
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          MAESTRO_TAGS: ${{ github.event.inputs.tags }}
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          # Maestro necesita las animaciones apagadas para que los waits sean
+          # deterministas en el WebView.
+          disable-animations: true
+          script: |
+            set -o pipefail
+            adb wait-for-device
+            adb shell settings put global window_animation_scale 0
+            adb shell settings put global transition_animation_scale 0
+            adb shell settings put global animator_duration_scale 0
+
+            echo "::group::Instalar APK"
+            adb install -r -g "$APK_PATH"
+            echo "::endgroup::"
+
+            mkdir -p artifacts/screenshots artifacts/debug
+
+            ARGS=""
+            if [ -n "$MAESTRO_TAGS" ]; then
+              ARGS="--include-tags=$MAESTRO_TAGS"
+            fi
+
+            # --format junit deja un reporte que el job de publicacion consume.
+            # --debug-output recoge logs, jerarquia de vistas y capturas de fallo.
+            maestro test .maestro/ \
+              $ARGS \
+              --format junit \
+              --output artifacts/report.xml \
+              --debug-output artifacts/debug
+
+      # Las capturas de takeScreenshot caen en el working directory.
+      - name: Recolectar capturas
+        if: always()
+        run: |
+          mkdir -p artifacts/screenshots
+          find . -maxdepth 1 -name "TC-*.png" -exec mv {} artifacts/screenshots/ \; || true
+          ls -R artifacts || true
+
+      - name: Subir evidencia
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-evidencia-api-${{ matrix.api-level }}
+          path: artifacts/
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Publicar resultados en el resumen del run
+        if: always()
+        uses: mikepenz/action-junit-report@v5
+        with:
+          report_paths: artifacts/report.xml
+          check_name: "Maestro E2E (API ${{ matrix.api-level }})"
+          fail_on_failure: true
+
+  # -------------------------------------------------------------------------
+  # 3. CD: solo si la suite paso y estamos en main.
+  # -------------------------------------------------------------------------
+  release:
+    name: Publicar APK
+    needs: e2e
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Crear release con el APK verificado
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Build ${{ github.run_number }}
+          body: |
+            APK validado por la suite E2E de Maestro.
+            Commit: ${{ github.sha }}
+          files: ${{ env.APK_PATH }}

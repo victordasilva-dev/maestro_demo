@@ -1,0 +1,105 @@
+appId: com.tricot_app
+name: "Carro - Flujo fallido - el producto no se agrega si no se selecciona una talla"
+tags:
+  - e2e
+  - fallido
+  - negativo
+  - carro
+# Trazabilidad: TC-CARRO-AND-001, 002, 003, 004
+env:
+  TERMINO: "polera"
+  PRODUCTO: "Polera deportiva mujer gris verde"
+  SKU_PDP: "274125"
+  PRECIO: '\$3\.990'
+---
+# ---------------------------------------------------------------------
+# Given la app esta instalada con estado limpio y el usuario es invitado
+# ---------------------------------------------------------------------
+- launchApp:
+    clearState: true
+    label: "Abrir la app por primera vez con estado limpio"
+- extendedWaitUntil:
+    visible: "Carrito 0 artículos"
+    timeout: 30000
+    label: "El contador del carrito muestra 'Carrito 0 artículos'"
+
+# ---------------------------------------------------------------------
+# When busca "polera" y abre el PDP del producto
+# ---------------------------------------------------------------------
+- runFlow:
+    file: subflows/buscar-y-abrir-pdp.yaml
+
+- assertVisible:
+    text: "${SKU_PDP}"
+    label: "El PDP muestra el SKU master ${SKU_PDP}"
+- assertVisible:
+    text: "${PRECIO}"
+    label: "El PDP muestra el precio $3.990"
+
+# ---------------------------------------------------------------------
+# When toca "Agregar" sin haber seleccionado ninguna talla
+# ---------------------------------------------------------------------
+- tapOn:
+    text: "Agregar"
+    enabled: true
+    label: "Tocar Agregar sin seleccionar talla"
+- extendedWaitUntil:
+    visible: "Selecciona una talla"
+    timeout: 10000
+    label: "Se abre el modal 'Selecciona una talla'"
+- assertVisible:
+    text: "Agregar"
+    enabled: false
+    childOf:
+      id: "js-pdp-size-selection"
+    label: "El boton Agregar del modal se muestra deshabilitado"
+
+- takeScreenshot:
+    path: "TC-CARRO-AND-004-agregar-deshabilitado"
+    label: "Evidencia: boton Agregar deshabilitado sin talla"
+
+# ---------------------------------------------------------------------
+# When intenta tocar el boton Agregar deshabilitado
+# ---------------------------------------------------------------------
+- tapOn:
+    text: "Agregar"
+    enabled: false
+    childOf:
+      id: "js-pdp-size-selection"
+    label: "Intentar tocar el boton Agregar deshabilitado"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# ---------------------------------------------------------------------
+# Then el modal sigue visible y el carro no cambia
+# ---------------------------------------------------------------------
+- assertVisible:
+    text: "Selecciona una talla"
+    label: "El modal 'Selecciona una talla' permanece visible"
+- assertVisible:
+    text: "Carrito 0 artículos"
+    label: "El contador del carrito continua mostrando 'Carrito 0 artículos'"
+- assertNotVisible:
+    text: "Carrito 1 artículos"
+    label: "El contador del carrito no se incrementa"
+
+# El producto no queda registrado en el carro de compras
+- tapOn:
+    text: "Close"
+    childOf:
+      id: "js-pdp-size-selection"
+    label: "Cerrar el modal"
+- tapOn:
+    text: "Carrito 0 artículos"
+    label: "Abrir el carro de compras"
+- extendedWaitUntil:
+    visible: "Tu bolsa está vacía"
+    timeout: 20000
+    label: "El carro de compras se abre vacio"
+- assertNotVisible:
+    text: "${PRODUCTO}"
+    label: "El producto no quedo registrado en el carro de compras"
+
+- takeScreenshot:
+    path: "TC-CARRO-AND-004-carro-vacio"
+    label: "Evidencia: el carro quedo vacio"

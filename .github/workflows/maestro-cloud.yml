@@ -1,0 +1,39 @@
+name: Maestro Cloud (alternativa sin emulador)
+
+# ---------------------------------------------------------------------------
+# Corre la misma suite en dispositivos gestionados por mobile.dev en lugar de
+# levantar un emulador en el runner. Mas rapido y estable, pero necesita el
+# secret MAESTRO_CLOUD_API_KEY.
+# Util cuando el job del emulador se vuelve lento o flaky.
+# ---------------------------------------------------------------------------
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+jobs:
+  cloud:
+    name: Suite en Maestro Cloud
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verificar el secret
+        env:
+          KEY: ${{ secrets.MAESTRO_CLOUD_API_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::error::Falta el secret MAESTRO_CLOUD_API_KEY."
+            echo "Crearlo en Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      - name: Subir y ejecutar la suite
+        uses: mobile-dev-inc/action-maestro-cloud@v1
+        with:
+          api-key: ${{ secrets.MAESTRO_CLOUD_API_KEY }}
+          app-file: app/build/app-android-dev_2.5.apk
+          workspace: .maestro
+          android-api-level: 33
+          # async: true  # descomentar para no bloquear el PR esperando el resultado

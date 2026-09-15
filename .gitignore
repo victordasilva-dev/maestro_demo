@@ -1,0 +1,17 @@
+# Evidencia y artefactos de corridas locales
+artifacts/
+TC-*.png
+*.xml.bak
+.maestro/**/screenshots/
+
+# Salida de debug de Maestro
+maestro-debug-output/
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# NOTA: app/build/ NO se ignora a proposito: el APK que consume la suite E2E
+# vive ahi. Si mas adelante se agrega el .gitignore estandar de Android (que
+# ignora build/), hay que excluir explicitamente app/build/*.apk o el job e2e
+# dejara de encontrar el APK.

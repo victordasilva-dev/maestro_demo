@@ -1,5 +1,5 @@
 fun main() {
-	val nombre = "Mundo"
+	val nombre = "Hola Mundo"
 	val mensaje = saludar(nombre)
 
 	println(mensaje)

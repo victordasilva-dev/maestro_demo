@@ -3,6 +3,8 @@ artifacts/
 TC-*.png
 *.xml.bak
 .maestro/**/screenshots/
+.claude/**
+.maestro/knowledge/**
 
 # Salida de debug de Maestro
 maestro-debug-output/

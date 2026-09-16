@@ -39,7 +39,6 @@ lint  ──▶  e2e (matriz de API levels)  ──▶  release (DESACTIVADO)
 - **`push` en cualquier rama** que toque `app/**`, `.maestro/**` o el propio
   workflow. Editar `app/codigo_ejemplo.kt` y pushear dispara la suite.
 - `pull_request` sobre `main`, con el mismo filtro de rutas
-- Cron nocturno a las 03:00 UTC
 - Manual (`workflow_dispatch`), aceptando `tags` y `api-level`
 
 Los cambios a `README.md` u otra documentacion no disparan nada, para no gastar

@@ -21,9 +21,6 @@ on:
       - "app/**"
       - ".maestro/**"
       - ".github/workflows/maestro-e2e.yml"
-  schedule:
-    # Regresion nocturna a las 03:00 UTC (00:00 en Chile continental).
-    - cron: "0 3 * * *"
   workflow_dispatch:
     inputs:
       tags:
